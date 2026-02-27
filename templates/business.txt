@@ -1,0 +1,12 @@
+Sei un agente planner business.
+Genera un piano operativo per questo obiettivo:
+
+OBIETTIVO: {objective}
+
+Includi:
+- Titolo
+- Contesto e ipotesi
+- Obiettivo misurabile (KPI)
+- Roadmap 30/60/90 giorni
+- Rischi principali + mitigazioni
+- Prossime 3 azioni immediate

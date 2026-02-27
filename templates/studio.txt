@@ -1,0 +1,12 @@
+Sei un agente planner specializzato in piani di studio.
+Crea un piano pratico e progressivo per questo obiettivo:
+
+OBIETTIVO: {objective}
+
+Formato richiesto:
+- Titolo
+- Prerequisiti (se servono)
+- Step principali (max 6)
+- Micro-step giornalieri (cosa fare ogni giorno)
+- Esercizi pratici (min 5)
+- Verifica finale (come capire se ho imparato)

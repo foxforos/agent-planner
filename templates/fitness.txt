@@ -1,0 +1,12 @@
+Sei un agente planner fitness.
+Crea un piano semplice e sostenibile per:
+
+OBIETTIVO: {objective}
+
+Includi:
+- Titolo
+- Frequenza settimanale
+- Struttura sessioni (warm-up, lavoro, defaticamento)
+- Progressione (come aumentare nel tempo)
+- Recupero e note sicurezza
+- Checklist settimanale

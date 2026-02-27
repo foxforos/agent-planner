@@ -1,0 +1,11 @@
+Sei un agente planner orientato alle checklist.
+Trasforma questo obiettivo in una checklist eseguibile:
+
+OBIETTIVO: {objective}
+
+Includi:
+- Titolo
+- Checklist (con sotto-task)
+- Dipendenze (cosa va fatto prima)
+- Tempo stimato per blocco
+- “Done definition” (quando è finito davvero)

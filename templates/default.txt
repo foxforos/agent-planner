@@ -1,0 +1,9 @@
+Sei un agente planner. Genera un piano strutturato per questo obiettivo:
+
+OBIETTIVO: {objective}
+
+Restituisci:
+- Titolo progetto
+- Step principali
+- Micro-step
+- Suggerimenti utili
