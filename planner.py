@@ -1,7 +1,6 @@
-# Git test commit
 # planner.py
 from openai import OpenAI
-from config import OPENAI_API_KEY, MODEL, DOCS_FOLDER
+from config import MODEL, DOCS_FOLDER, require_openai_api_key
 from models import Project
 from datetime import datetime
 import json
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class Planner:
     def __init__(self, memory_path="memory.json"):
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
         self.memory_path = memory_path
         self.memory = self.load_memory()
 
@@ -84,39 +82,42 @@ class Planner:
 
     def generate_plan(self, objective, template_name=None):
       logger.info("PLANNER: generate_plan start")
-      # 1) Template di default se non specificato
+      # template default se non specificato
       if template_name is None:
           template_name="default"
 
 
-      #2) Costruisci percorso template: templates/<templates_name>.txt
+      # costruisci percorso template
       base_dir=os.path.dirname(__file__)
       template_filename=f"{template_name}.txt"
       template_path=os.path.join(base_dir, "templates", template_filename)
 
-      #3) Se il template non esiste: errore(scelta A)
+      # se il template non esiste =>
       if not os.path.exists(template_path):
             logger.warning("PLANNER: generate_plan template non trovato (template=%s path=%s)", template_name, template_path)
             raise FileNotFoundError(f'Template "{template_name}" non trovato: {template_path}') 
     
-      #4) Leggi template
+      # leggi template
       with open(template_path, "r", encoding="utf-8") as f:
         prompt_template=f.read().strip()
  
-      #5) Se template vuoto: errore(evita prompt vuoto)
+      # se template vuoto errore
       if not prompt_template:
         logger.warning("PLANNER: generate_plan template vuoto (template=%s path=%s)", template_name, template_path)
         raise ValueError(f'Template "{template_name}" è vuoto.')
     
-      #6) Render prompt
+      # render prompt
       try:
           prompt=prompt_template.format(objective=objective)
       except KeyError as e:
           logger.error("PLANNER: generate_plan placeholder non valido (template=%s err=%s)", template_name, e)
           raise ValueError(f"Template '{template_name}' ha placeholder non valido: {e}. Usa {{objective}}.")
 
-      #7) Chiamata OpenAI
-      response=self.client.chat.completions.create(model=MODEL, messages=[{"role":"user", "content": prompt}])
+      # chiamata OpenAI
+      api_key=require_openai_api_key()
+      client=OpenAI(api_key=api_key)
+      
+      response=client.chat.completions.create(model=MODEL, messages=[{"role":"user", "content": prompt}])
       content=response.choices[0].message.content
       logger.info("PLANNER: generate_plan success (template=%s)", template_name)
       return content
@@ -162,7 +163,7 @@ class Planner:
         logger.info("PLANNER: delete_project start (name=%s)", name)
         target=name.lower().strip()
 
-        # 1. Trova il progetto
+        # trova progetto
         project_to_delete=None
         for project in self.memory:
             if project.name.lower().strip() == target:
@@ -173,13 +174,13 @@ class Planner:
             logger.warning("PLANNER: delete_project not found (name=%s)", name)
             return False
         
-        # 2. Rimuovi dalla memoria in RAM
+        # rimozione da ram
         self.memory=[p for p in self.memory if p is not project_to_delete]
         
-        # 3. Salva la nuova memoria su file
+        # salva memoria permanente(memory.json)
         self.save_memory()
 
-        # 4. Elimina il file associato(se presente)
+        # elimina file associato se esiste
         if project_to_delete.filename:
             filepath=os.path.join(DOCS_FOLDER, project_to_delete.filename)
             try:
@@ -196,14 +197,7 @@ class Planner:
 
          # Rinomina progetto
     def rename_project(self, old_name: str, new_name: str)-> bool:
-        """
-        Policy rename:
-        - se new_name già esiste (e NON è lo stesso progetto) -> BLOCCO con errore
-        - altrimenti rinomina (name + filename fisico)
-
-        Ritorna True se rinominato, False se il progetto non esiste.
-        In caso di duplicato sul nuovo nome, solleva ValueError
-        """
+      
 
         logger.info("PLANNER: rename_project start (old_name=%s new_name=%s)", old_name, new_name)
 
@@ -211,7 +205,7 @@ class Planner:
         new_clean=new_name.strip()
         new_target=new_clean.lower()
 
-        #1) Trova il progetto
+        # trova progetto
         project_to_rename=None
         for project in self.memory:
             if project.name.lower().strip()==old_target:
@@ -222,7 +216,7 @@ class Planner:
             logger.warning("PLANNER: rename_project not found (old_name=%s)", old_name)
             return False
         
-        #2)Se il nome cambia davvero, controlla duplicati
+        # se il nome cambia davvero, controlla duplicati
         # se cambia solo per maiuscole/spazi, lo consideriamo lo stesso progetto
         if new_target !=old_target:
             existing=self.find_project_by_name(new_clean)
@@ -230,15 +224,15 @@ class Planner:
                 logger.warning("PLANNER: rename_project duplicate name (old_name=%s new_name=%s)", old_name, new_clean)
                 raise ValueError(f"Nome progetto già esistente: '{new_clean}'")
             
-        #3)Percorsi file
+        # percorsi file
         old_filepath=os.path.join(DOCS_FOLDER, project_to_rename.filename)
 
-        #4)Nuovo filename(stessa estensione del progetto)
+        # nuovo filename(stessa estensione del progetto)
         extension=project_to_rename.format
         new_filename=self.make_project_filename(new_clean,extension)
         new_filepath=os.path.join(DOCS_FOLDER, new_filename)
 
-        #5)Rinomina fisica del file su disco
+        # rinomina fisica file
         try:
             if os.path.exists(old_filepath):
                 os.rename(old_filepath, new_filepath)
@@ -246,11 +240,11 @@ class Planner:
         except Exception as e:
             logger.warning("PLANNER: rename_project file rename failed (old_path=%s new_path=%s err=%s)", old_filepath, new_filepath, e)
 
-        #6)Aggiorna dati in memoria
+        # aggiornamento memoria volatile
         project_to_rename.name=new_clean
         project_to_rename.filename=new_filename
 
-        #7)Salva
+        # salvataggio in memory.json
         self.save_memory()
 
         logger.info("PLANNER: rename_project success (old_name=%s new_name=%s filename=%s)", old_name, new_clean, new_filename)
@@ -375,24 +369,20 @@ class Planner:
 
 
     def filter_projects_by_tags(self, tags: list[str]):
-        """
-        Ritorna i progetti che contengono TUTTI i tag richiesti (AND).
-        -tags: lista di stringhe(input già splittato lato agent)
-        -ritorna: lista di Project(può essere vuota)
-        """
 
-        #1) Normalizza i tag richiesti
+
+        # normalizza tag
         normalized_tags=[]
         for tag in tags:
             t=tag.strip().lower().replace(" ", "-")
             if t:
                 normalized_tags.append(t)
 
-        #Se non ci sono tag validi, non è un errore: ritorna lista vuota
+        
         if not normalized_tags:
             return[]
         
-        #2)Filtra progetti che contengono TUTTI i tag richiesti
+        # filtra progetti con tutti i tag
         result=[]
         for project in self.memory:
             if all(t in project.tags for t in normalized_tags):
@@ -404,8 +394,8 @@ class Planner:
 
     def doctor_report(self) -> dict:
         """
-        Analizza la coerenza tra memory.json e la cartella DOCS.
-        Non modifica nulla.  Restituisce un report strutturato.
+        Analizza coerenza tra memory.json e cartella docs
+        Non modifica, restituisce report
         """
 
         logger.info("PLANNER: doctor_report start")
@@ -418,9 +408,8 @@ class Planner:
         "duplicate_filenames":[],
     }
 
-        # -------------------------
-        # 1️⃣ Raccolta dati base
-        # -------------------------
+        
+        # Raccolta dati base
 
         memory_projects=self.memory
         memory_filenames=[]
@@ -430,25 +419,23 @@ class Planner:
            memory_filenames.append(project.filename)
            memory_names.append(project.name)
 
-    # Lista file fisici in DOCS
+    # lista file in docs
         try:
             docs_files=os.listdir(DOCS_FOLDER)
         except Exception as e:
             logger.warning("PLANNER: doctor_report docs folder read failed (docs_folder=%s err=%s)", DOCS_FOLDER, e)
             docs_files=[]
 
-        # -------------------------
-        # 2️⃣ Missing files
-        # -------------------------
+
+        # missing files
 
         for project in memory_projects:
             filepath=os.path.join(DOCS_FOLDER, project.filename)
             if not os.path.exists(filepath):
                 report["missing_files"].append(project.name)
 
-        # -------------------------
-        # 3️⃣ Orphan files
-        # -------------------------
+        
+        # orphan files
 
         for file in docs_files:
             full_path = os.path.join(DOCS_FOLDER, file)
@@ -461,9 +448,8 @@ class Planner:
                 report["orphan_files"].append(file)
 
 
-        # -------------------------
-        # 4️⃣ Invalid records
-        # -------------------------
+        
+        # invalid records
 
         for project in memory_projects:
             if not project.name or not project.filename or not project.format:
@@ -474,9 +460,8 @@ class Planner:
             if not project.filename.endswith(project.format):
                 report["invalid_records"].append(project.name)
 
-        # -------------------------
-        # 5️⃣ Duplicati nomi
-        # -------------------------
+        
+        # duplicati nomi
 
         seen_names=set()     # set è una struttura dati che non permette duplicati
         for name in memory_names:
@@ -486,9 +471,8 @@ class Planner:
             else:
                 seen_names.add(normalized)
 
-        # -------------------------
-        # 6️⃣ Duplicati filename
-        # -------------------------
+        
+        # duplicati filename
 
         seen_filenames=set()   # set è una struttura dati che non permette duplicati
         for filename in memory_filenames:
@@ -524,7 +508,7 @@ class Planner:
         Restituisce un summary finale.
         """
 
-        # Riesegui report aggiornato
+        # riesegue report
         report=self.doctor_report()
 
         invalid_records=report.get("invalid_records", []) or []
@@ -540,7 +524,7 @@ class Planner:
 
 
 
-        # Costruzione fix plan
+        # fix plan
         print("\n==============================")
         print("         DOCTOR FIX (SAFE MODE)")
         print("==============================")
@@ -553,18 +537,26 @@ class Planner:
                 "moved_files": [],
                 "backup_path": None
             }
-        
+
+
         print("\nFix plan:")
+
         if invalid_records:
-            print(f"-Verranno rimossi {len(invalid_records)} invalid_records dalla memoria.")
+            print(
+                f"- Verranno rimossi {len(invalid_records)} invalid_records dalla memoria: "
+                f"{', '.join(invalid_records)}"
+            )
+
         if orphan_files:
-            print(f"- Verranno spostati {len(orphan_files)} orphan_files in docs/_orphaned/")
+            print(
+                f"- Verranno spostati {len(orphan_files)} orphan files in docs/_orphaned/: "
+                f"{', '.join(orphan_files)}"
+            )
 
         # Conferma utente
         confirm=input("\nConfermi esecuzione fix? (y/n): ").strip().lower()
         logger.info("DOCTOR_FIX: richiesta conferma utente (confirm=%s)", confirm)
         if confirm !="y":
-           logger.info("DOCTOR_FIX: conferma ricevuta. Procedo con fix.")
            print("Operazione annullata.")
            logger.info("DOCTOR_FIX: operazione annullata dall'utente. Exit.")
            return {
@@ -572,7 +564,8 @@ class Planner:
               "moved_files": [],
               "backup_path": None
              }  
-    
+        
+        logger.info("DOCTOR_FIX: conferma ricevuta dall'utente. Avvio procedura fix.")
         # Backup obbligatorio memory.json
         timestamp=datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"memory_backup_{timestamp}.json"
@@ -603,16 +596,45 @@ class Planner:
         removed_records=[]
         moved_files=[]
 
-        # Fix invalid_records(rimozione memoria)
+        # fix invalid_records (rimozione memoria + quarantena file associato)
         if invalid_records:
-            new_memory=[]
+            new_memory = []
+
+            orphan_folder = os.path.join(DOCS_FOLDER, "_orphaned")
+            if not os.path.exists(orphan_folder):
+                os.makedirs(orphan_folder)
+
             for project in self.memory:
                 if project.name in invalid_records:
                     removed_records.append(project.name)
-                    logger.warning( "DOCTOR_FIX: record invalido rimosso (name=%s)", project.name)
+                    logger.warning("DOCTOR_FIX: record invalido rimosso (name=%s)", project.name)
+
+                    if project.filename:
+                        source = os.path.join(DOCS_FOLDER, project.filename)
+                        destination = os.path.join(orphan_folder, project.filename)
+
+                        try:
+                            if os.path.exists(source):
+                                os.rename(source, destination)
+                                moved_files.append(project.filename)
+                                logger.warning(
+                                    "DOCTOR_FIX: file associato a record invalido spostato in quarantena "
+                                    "(source=%s destination=%s)",
+                                    source,
+                                    destination,
+                                )
+                        except Exception as e:
+                            logger.error(
+                                "DOCTOR_FIX: spostamento file associato a record invalido fallito "
+                                "(source=%s destination=%s err=%s)",
+                                source,
+                                destination,
+                                e,
+                            )
                 else:
                     new_memory.append(project)
-            self.memory=new_memory
+
+            self.memory = new_memory
             self.save_memory()
 
         # Fix orphan_files(quarantine)
@@ -628,10 +650,10 @@ class Planner:
                     if os.path.exists(source):
                         os.rename(source, destination)
                         moved_files.append(filename)
-                        logger.warning("DOCTOR_FIX: file orfano spostato (source=%s dest=%s)",source,destination)
+                        logger.warning("DOCTOR_FIX: file orphan spostato (source=%s dest=%s)",source,destination)
 
                 except Exception as e:
-                    logger.error("DOCTOR_FIX: errore spostamento file orfano (filename=%s source=%s dest=%s err=%s)",filename,source,destination,e)
+                    logger.error("DOCTOR_FIX: errore spostamento file orphan (filename=%s source=%s dest=%s err=%s)",filename,source,destination,e)
                     print(f"Errore spostamento file {filename}: {e}")
                     print("Operazione interrotta per sicurezza.")
                     return {
@@ -643,8 +665,12 @@ class Planner:
         # Summary finale
         print("\n------------------------------")
         print("Doctor Fix completato.")
-        print(f"- Record rimossi: {len(removed_records)}")
-        print(f"- File spostati: {len(moved_files)}")
+
+        removed_names = ", ".join(removed_records) if removed_records else "nessuno"
+        moved_names = ", ".join(moved_files) if moved_files else "nessuno"
+
+        print(f"- Record rimossi: {len(removed_records)}, {removed_names}")
+        print(f"- File spostati: {len(moved_files)}, {moved_names}")
         print(f"- Backup creato in: {backup_path}")
         print("------------------------------\n")
 

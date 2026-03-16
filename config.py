@@ -3,9 +3,14 @@ import os
 # ✅ API Key: deve stare nell'ambiente, NON nel codice
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata."
-                       "Imposta la variabile d'ambiente OPEN_API_KEY (o usa un file .env caricato dal tuo launcher).")
+def require_openai_api_key() -> str:
+    """
+    Ritorna la OPENAI_API_KEY se presente.
+    Solleva RuntimeError solo quando una parte del programma prova davvero a usare OpenAI.
+    """
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY non impostata." "Imposta la variabile d'ambiente OPENAI_API_KEY (o usa un file .env caricato dal tuo launcher).")
+    return OPENAI_API_KEY
 
 # Modello (override via env)
 MODEL = os.getenv("AGENT_PLANNER_MODEL", "gpt-4.1-mini")
