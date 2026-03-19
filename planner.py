@@ -151,17 +151,30 @@ class Planner:
                 return project
         return None
     
-    def delete_project(self, name: str) -> bool:
+    def delete_project(self, name: str, dry_run: bool=False) -> dict:
         """
         Elimina un progetto per nome (case insensiive).
-        - Rimuove il progetto da self.memory
-        - Salva la nuova memoria su memory.json
-        - Elimina il file associato in DOCS_FOLDER, se esiste
+        - Rimuove progetto da self.memory
+        - Salva nuova memoria su memory.json
+        - Elimina file associato in DOCS_FOLDER, se esiste
 
-        Ritorna True se il progetto è stato trovato e cancellato, False altrimenti.
+        Ritorna un report con informazioni su:
+        - esistenza del progetto
+        - operazioni simulate o eseguite
         """
-        logger.info("PLANNER: delete_project start (name=%s)", name)
+        logger.info("PLANNER: delete_project start (name=%s dry_run=%s)", name, dry_run)
         target=name.lower().strip()
+
+        report={
+            "found": False,
+            "name": name,
+            "filename": None,
+            "filepath": None,
+            "will_delete_memory": False,
+            "will_delete_file": False,
+            "deleted_memory": False,
+            "deleted_file": False,
+        }
 
         # trova progetto
         project_to_delete=None
@@ -172,27 +185,46 @@ class Planner:
 
         if project_to_delete is None:
             logger.warning("PLANNER: delete_project not found (name=%s)", name)
-            return False
+            return report
+        
+
+        report["found"]=True
+        report["filename"]=project_to_delete.filename
+        report["will_delete_memory"]=True
+
+        if project_to_delete.filename:
+            filepath=os.path.join(DOCS_FOLDER, project_to_delete.filename)
+            report["filepath"]=filepath
+            report["will_delete_file"]=os.path.exists(filepath)
+        else:
+            filepath=None
+
+
+        if dry_run:
+            logger.info("PLANNER: delete_project dry_run report=%s", report)
+            return report
+
         
         # rimozione da ram
         self.memory=[p for p in self.memory if p is not project_to_delete]
         
         # salva memoria permanente(memory.json)
         self.save_memory()
+        report["deleted_memory"]=True
 
         # elimina file associato se esiste
-        if project_to_delete.filename:
-            filepath=os.path.join(DOCS_FOLDER, project_to_delete.filename)
+        if project_to_delete.filename and filepath:
             try:
                 if os.path.exists(filepath):
                     os.remove(filepath)
+                    report["deleted_file"]=True
                     logger.info("PLANNER: delete_project file removed (path=%s)", filepath)
             except Exception as e:
                 logger.warning("PLANNER: delete_project file removal failed (path=%s err=%s)", filepath, e)
                 
 
         logger.info("PLANNER: delete_project success (name=%s filename=%s)", project_to_delete.name, project_to_delete.filename)
-        return True
+        return report
     
 
          # Rinomina progetto

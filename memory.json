@@ -1,16 +1,5 @@
 [
     {
-        "name": "programmare in python",
-        "objective": "imparare python",
-        "created_at": "2025-12-08T11:01:51.528532",
-        "filename": "progetto_programmare_in_python.txt",
-        "tags": [
-            "informatica",
-            "lavoro"
-        ],
-        "format": "txt"
-    },
-    {
         "name": "sicurezza informatica",
         "objective": "studio sicurezza informatica",
         "created_at": "2025-12-11T13:14:32.965967",
@@ -113,14 +102,6 @@
             "aspetto-fisico"
         ],
         "format": "md"
-    },
-    {
-        "name": "python avanzato-2",
-        "objective": "python avanzato",
-        "created_at": "2026-02-08T19:16:26.031079",
-        "filename": "progetto_python_avanzato-2.txt",
-        "tags": [],
-        "format": "txt"
     },
     {
         "name": "apnea",

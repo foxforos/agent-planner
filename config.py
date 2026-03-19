@@ -1,6 +1,6 @@
 import os
 
-# ✅ API Key: deve stare nell'ambiente, NON nel codice
+# api key in env
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def require_openai_api_key() -> str:
@@ -12,10 +12,10 @@ def require_openai_api_key() -> str:
         raise RuntimeError("OPENAI_API_KEY non impostata." "Imposta la variabile d'ambiente OPENAI_API_KEY (o usa un file .env caricato dal tuo launcher).")
     return OPENAI_API_KEY
 
-# Modello (override via env)
+# Modello
 MODEL = os.getenv("AGENT_PLANNER_MODEL", "gpt-4.1-mini")
 
-# Cartella documenti (override via env)
+# Cartella documenti
 DOCS_FOLDER = os.getenv("AGENT_PLANNER_DOCS_FOLDER", "docs")
 
 

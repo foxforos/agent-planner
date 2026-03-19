@@ -210,31 +210,72 @@ def main():
        return
 
 
+
     if command.lower().startswith("elimina progetto"):
-       logger.info("AGENT: branch scelto (action=elimina_progetto)")
-       # Controllo che ci siano i due punti
-       if ":" not in command:
-          print("❌ Devi specificare un nome. Esempio:")
-          print('   python agent.py "elimina progetto: nome"')
-          return
-       
-       # Estrarre il nome dopo i due punti
-       project_name=command.split(":", 1)[1].strip()
+         logger.info("AGENT: branch scelto (action=elimina_progetto)")
 
-       # Controlla che il nome non sia vuoto
-       if not project_name:
-          print("❌ Devi indicare il nome del progetto dopo i due punti.")
-          return
-       
-       # Tentativo di eliminazione
-       success=planner.delete_project(project_name)
+         # Controllo che ci siano i due punti
+         if ":" not in command:
+            print("❌ Devi specificare un nome. Esempio:")
+            print('    python agent.py "elimina progetto: nome"')
+            return
 
-       if success:
-          print(f"🗑️ Progetto '{project_name}' eliminato con successo.")
-       else:
-          print(f"❌ Nessun progetto trovato con il nome: {project_name}")
+         # Estrarre il contenuto dopo i due punti
+         command_body = command.split(":", 1)[1].strip()
 
-       return
+         # Modalità dry-run opzionale da CLI
+         cli_dry_run = False
+         if command_body.endswith("--dry-run"):
+            cli_dry_run = True
+            command_body = command_body[:-9].strip()
+
+         project_name = command_body
+
+         # Controlla che il nome non sia vuoto
+         if not project_name:
+            print("❌ Devi indicare il nome del progetto dopo i due punti.")
+            return
+
+         # Preview / simulazione
+         report = planner.delete_project(project_name, dry_run=True)
+
+         if not report["found"]:
+            print(f"❌ Nessun progetto trovato con il nome: {project_name}")
+            return
+
+         print("⚠️ Anteprima eliminazione progetto")
+         print(f"   Nome progetto: {report['name']}")
+         print(f"   File associato: {report['filename']}")
+         print(f"   Percorso file: {report['filepath']}")
+         print(f"   Eliminerà dalla memoria: {report['will_delete_memory']}")
+         print(f"   Eliminerà file fisico: {report['will_delete_file']}")
+
+         # Se l'utente ha chiesto solo dry-run, fermarsi qui
+         if cli_dry_run:
+            print("ℹ️ Dry-run completato: nessuna modifica eseguita.")
+            return
+
+         # Conferma utente prima dell'eliminazione reale
+         confirm = input("Confermi eliminazione? (yes/no): ").strip().lower()
+
+         if confirm != "yes":
+            print("ℹ️ Operazione annullata.")
+            logger.info("AGENT: eliminazione progetto annullata dall'utente (name=%s)", project_name)
+            return
+
+         # Eliminazione reale
+         result = planner.delete_project(project_name, dry_run=False)
+
+         if result["deleted_memory"]:
+            print(f"🗑️ Progetto '{project_name}' eliminato con successo.")
+            if result["deleted_file"]:
+                  print("📄 Anche il file associato è stato eliminato.")
+            elif result["filename"]:
+                  print("ℹ️ Nessun file fisico da eliminare oppure file non presente.")
+         else:
+            print(f"❌ Eliminazione non riuscita per il progetto: {project_name}")
+
+         return
     
 
     if command.lower().startswith("modifica progetto"):
