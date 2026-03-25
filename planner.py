@@ -228,60 +228,109 @@ class Planner:
     
 
          # Rinomina progetto
-    def rename_project(self, old_name: str, new_name: str)-> bool:
+    def rename_project(self, old_name: str, new_name: str, dry_run: bool=False) -> dict:
       
 
-        logger.info("PLANNER: rename_project start (old_name=%s new_name=%s)", old_name, new_name)
+        logger.info("PLANNER: rename_project start (old_name=%s new_name=%s dry_run=%s)", old_name, new_name, dry_run)
 
         old_target=old_name.lower().strip()
         new_clean=new_name.strip()
         new_target=new_clean.lower()
 
+        report={
+            "found": False,
+            "old_name": old_name,
+            "new_name": new_clean,
+            "old_filename": None,
+            "new_filename": None,
+            "old_filepath": None,
+            "new_filepath": None,
+            "will_rename_memory": False,
+            "will_rename_file": False,
+            "renamed_memory": False,
+            "renamed_file": False,
+        }
+
         # trova progetto
         project_to_rename=None
         for project in self.memory:
-            if project.name.lower().strip()==old_target:
+            if project.name.lower().strip() == old_target:
                 project_to_rename=project
                 break
 
         if project_to_rename is None:
             logger.warning("PLANNER: rename_project not found (old_name=%s)", old_name)
-            return False
+            return report
         
+        report["found"]=True
+        report["old_name"]=project_to_rename.name
+        report["old_filename"]=project_to_rename.filename
+
         # se il nome cambia davvero, controlla duplicati
         # se cambia solo per maiuscole/spazi, lo consideriamo lo stesso progetto
-        if new_target !=old_target:
+        if new_target != old_target:
             existing=self.find_project_by_name(new_clean)
             if existing is not None:
+                report["error"]=f"Nome progetto già esistente: '{new_clean}'"
                 logger.warning("PLANNER: rename_project duplicate name (old_name=%s new_name=%s)", old_name, new_clean)
-                raise ValueError(f"Nome progetto già esistente: '{new_clean}'")
+                return report
             
-        # percorsi file
-        old_filepath=os.path.join(DOCS_FOLDER, project_to_rename.filename)
+        old_filepath=None
+        if project_to_rename.filename:
+            old_filepath=os.path.join(DOCS_FOLDER, project_to_rename.filename)
+        report["old_filepath"]=old_filepath
 
         # nuovo filename(stessa estensione del progetto)
         extension=project_to_rename.format
-        new_filename=self.make_project_filename(new_clean,extension)
+        new_filename=self.make_project_filename(new_clean, extension)
         new_filepath=os.path.join(DOCS_FOLDER, new_filename)
 
-        # rinomina fisica file
-        try:
-            if os.path.exists(old_filepath):
+        report["new_filename"]=new_filename
+        report["new_filepath"]=new_filepath
+        report["will_rename_memory"]=(
+            project_to_rename.name != new_clean
+            or project_to_rename.filename != new_filename
+        )
+        report["will_rename_file"]=(
+            bool(project_to_rename.filename)
+            and old_filepath is not None
+            and old_filepath != new_filepath
+            and os.path.exists(old_filepath)
+        )
+
+        if dry_run:
+            logger.info("PLANNER: rename_project dry_run report=%s", report)
+            return report
+
+        previous_name=project_to_rename.name
+        previous_filename=project_to_rename.filename
+
+        if report["will_rename_memory"]:
+            project_to_rename.name=new_clean
+            project_to_rename.filename=new_filename
+
+            try:
+                self.save_memory()
+                report["renamed_memory"]=True
+            except Exception as e:
+                project_to_rename.name=previous_name
+                project_to_rename.filename=previous_filename
+                report["error"]=str(e)
+                logger.warning("PLANNER: rename_project save_memory failed (old_name=%s new_name=%s err=%s)", old_name, new_clean, e)
+                return report
+
+        if report["will_rename_file"]:
+            try:
                 os.rename(old_filepath, new_filepath)
+                report["renamed_file"]=True
                 logger.info("PLANNER: rename_project file renamed (old_path=%s new_path=%s)", old_filepath, new_filepath)
-        except Exception as e:
-            logger.warning("PLANNER: rename_project file rename failed (old_path=%s new_path=%s err=%s)", old_filepath, new_filepath, e)
+            except Exception as e:
+                report["error"]=str(e)
+                logger.warning("PLANNER: rename_project file rename failed (old_path=%s new_path=%s err=%s)", old_filepath, new_filepath, e)
 
-        # aggiornamento memoria volatile
-        project_to_rename.name=new_clean
-        project_to_rename.filename=new_filename
+        logger.info("PLANNER: rename_project success (old_name=%s new_name=%s old_filename=%s new_filename=%s)", old_name, new_clean, report["old_filename"], new_filename)
 
-        # salvataggio in memory.json
-        self.save_memory()
-
-        logger.info("PLANNER: rename_project success (old_name=%s new_name=%s filename=%s)", old_name, new_clean, new_filename)
-
-        return True
+        return report
 
 
 

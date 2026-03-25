@@ -38,14 +38,14 @@ def patch_agent_dependencies(monkeypatch):
     monkeypatch.setattr(agent, "setup_logging", lambda: "fake_log.log")
 
 
-def test_main_prints_usage_if_no_command(monkeypatch, capsys):
+def test_main_prints_help_if_no_command(monkeypatch, capsys):
     patch_agent_dependencies(monkeypatch)
     monkeypatch.setattr(agent.sys, "argv", ["agent.py"])
 
     agent.main()
 
     captured = capsys.readouterr()
-    assert 'Uso: python agent.py "comando"' in captured.out
+    assert ("Agent Planner CLI" in captured.out) and ("Sintassi:" in captured.out)
     assert DummyPlanner.doctor_report_called == 0
     assert DummyPlanner.doctor_fix_called == 0
 

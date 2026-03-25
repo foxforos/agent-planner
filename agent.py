@@ -15,6 +15,47 @@ logger=logging.getLogger(__name__)
 
 
 
+def print_help():
+    help_text = """
+Agent Planner CLI
+
+Sintassi:
+  agent-planner "comando"
+
+📦 Gestione progetti
+  "crea progetto: obiettivo"
+  "mostra progetti"
+  "carica progetto: nome"
+  "apri progetto: nome"
+
+🗑️ Modifiche
+  "elimina progetto: nome"
+  "elimina progetto: nome --dry-run"
+  "modifica progetto: nome_attuale: nuovo_nome"
+  "modifica progetto: nome_attuale: nuovo_nome --dry-run"
+
+🔎 Ricerca
+  "cerca: keyword"
+
+🏷️ Tag
+  "aggiungi tag: nome_progetto : tag1, tag2"
+  "rimuovi tag: nome_progetto : tag1, tag2"
+  "filtra tag: tag1, tag2"
+
+🛠️ Diagnostica
+  "doctor"
+  "doctor_fix"
+
+Esempi:
+  agent-planner "crea progetto: app gestione spese"
+  agent-planner "mostra progetti"
+  agent-planner "elimina progetto: app gestione spese --dry-run"
+"""
+    print(help_text)
+
+
+
+
 
 def _print_doctor_section(title: str, items: list[str]) -> None:
     print(f"\n📌 {title}")
@@ -72,13 +113,17 @@ def main():
 
     
     if len(sys.argv) < 2:
-        print("Uso: python agent.py \"comando\"")
+        print_help()
         return
 
     command = sys.argv[1]
+
+    if command.lower() in {"help", "--help", "-h"}:
+         print_help()
+         return
+
     logger.info("AGENT: comando ricevuto (input=%s)", command)
     planner = Planner()
-
 
 
     if command.lower() == "doctor":
@@ -280,38 +325,81 @@ def main():
 
     if command.lower().startswith("modifica progetto"):
          logger.info("AGENT: branch scelto (action=modifica_progetto)")
-         try:
-            payload=command.split(":", 1)[1].strip()
-         except IndexError:
-           print("Errore: Il formato corretto è -> modifica progetto: nome attuale: nuovo nome")
-           return
-         
-         # payload deve essere: <nome_attuale>: <nuovo nome>
-         if ":" not in payload:
+         if ":" not in command:
             print("Il formato corretto è -> modifica progetto: nome attuale: nuovo nome")
             return
-         
-         
-         old_name, new_name=payload.split(":", 1)
-         old_name=old_name.strip()
-         new_name=new_name.strip()
+
+         command_body = command.split(":", 1)[1].strip()
+
+         # Modalità dry-run opzionale da CLI
+         cli_dry_run = False
+         if command_body.endswith("--dry-run"):
+            cli_dry_run = True
+            command_body = command_body[:-9].strip()
+
+         # payload deve essere: <nome_attuale>: <nuovo nome>
+         if ":" not in command_body:
+            print("Il formato corretto è -> modifica progetto: nome attuale: nuovo nome")
+            return
+
+         old_name, new_name = command_body.split(":", 1)
+         old_name = old_name.strip()
+         new_name = new_name.strip()
 
          # Controllo validità input
          if not old_name or not new_name:
-            print("❌ I nomi non possono essere vuoti.")
+            print("❌ Devi indicare sia il nome attuale sia il nuovo nome.")
             return
-         
 
-         try:
-            result=planner.rename_project(old_name, new_name)
-            if not result:
-               print(f"Errore: progetto '{old_name}' non trovato")
-               return
-         except ValueError as e:
-            print(f"Errore: {e}")
+         # Preview / simulazione
+         report = planner.rename_project(old_name, new_name, dry_run=True)
+
+         if not report["found"]:
+            print(f"❌ Nessun progetto trovato con il nome: {old_name}")
             return
-         
-         print(f"Progetto rinominato da '{old_name}' a '{new_name}'")
+
+         if report.get("error"):
+            print(f"❌ Errore: {report['error']}")
+            return
+
+         print("\n📌 ANTEPRIMA RINOMINA\n")
+         print(f"   Nome attuale: {report['old_name']}")
+         print(f"   Nuovo nome: {report['new_name']}")
+         print(f"   File attuale: {report['old_filename']}")
+         print(f"   Nuovo file: {report['new_filename']}")
+         print(f"   Path attuale: {report['old_filepath']}")
+         print(f"   Nuovo path: {report['new_filepath']}")
+         print(f"   Rinominerà in memoria: {report['will_rename_memory']}")
+         print(f"   Rinominerà file fisico: {report['will_rename_file']}")
+
+         # Se l'utente ha chiesto solo dry-run, fermarsi qui
+         if cli_dry_run:
+            print("ℹ️ Dry-run completato: nessuna modifica eseguita.")
+            return
+
+         # Conferma utente prima della rinomina reale
+         confirm = input("Confermi rinomina? (yes/no): ").strip().lower()
+
+         if confirm != "yes":
+            print("ℹ️ Operazione annullata.")
+            logger.info("AGENT: rinomina progetto annullata dall'utente (old_name=%s new_name=%s)", old_name, new_name)
+            return
+
+         # Rinomina reale
+         result = planner.rename_project(old_name, new_name, dry_run=False)
+
+         if result.get("renamed_memory"):
+            print(f"✅ Progetto rinominato con successo: '{result['old_name']}' -> '{result['new_name']}'")
+            if result.get("renamed_file"):
+               print("📄 Anche il file associato è stato rinominato.")
+            else:
+               print("ℹ️ Memoria aggiornata; nessuna rinomina file necessaria o file non presente.")
+         else:
+            print(f"❌ Rinomina non riuscita per il progetto: {old_name}")
+
+         if result.get("error"):
+            print(f"❌ Errore: {result['error']}")
+
          return
     
 

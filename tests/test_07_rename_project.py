@@ -16,7 +16,7 @@ def make_project(name: str, filename: str) -> Project:
     )
 
 
-def test_rename_project_returns_false_if_not_found(tmp_path, monkeypatch):
+def test_rename_project_returns_report_if_not_found(tmp_path, monkeypatch):
     tmp_docs = tmp_path / "docs"
     monkeypatch.setattr(planner, "DOCS_FOLDER", str(tmp_docs))
 
@@ -25,10 +25,11 @@ def test_rename_project_returns_false_if_not_found(tmp_path, monkeypatch):
 
     result = p.rename_project("Missing", "Beta")
 
-    assert result is False
+    assert isinstance(result, dict)
+    assert result["found"] is False
 
 
-def test_rename_project_raises_value_error_if_new_name_already_exists(tmp_path, monkeypatch):
+def test_rename_project_returns_error_in_report_if_new_name_already_exists(tmp_path, monkeypatch):
     tmp_docs = tmp_path / "docs"
     monkeypatch.setattr(planner, "DOCS_FOLDER", str(tmp_docs))
 
@@ -38,8 +39,10 @@ def test_rename_project_raises_value_error_if_new_name_already_exists(tmp_path, 
         make_project("Beta", "beta.md"),
     ]
 
-    with pytest.raises(ValueError):
-        p.rename_project("Alpha", "Beta")
+    result = p.rename_project("Alpha", "Beta")
+
+    assert isinstance(result, dict)
+    assert "Nome progetto già esistente" in result["error"]
 
 
 def test_rename_project_updates_memory_renames_file_and_calls_save_memory(tmp_path, monkeypatch):
@@ -62,7 +65,8 @@ def test_rename_project_updates_memory_renames_file_and_calls_save_memory(tmp_pa
 
     result = p.rename_project("Alpha", "Beta")
 
-    assert result is True
+    assert result["renamed_memory"] is True
+    assert result["renamed_file"] is True
     assert p.memory[0].name == "Beta"
     assert p.memory[0].filename == "progetto_Beta.md"
     assert calls["count"] == 1
