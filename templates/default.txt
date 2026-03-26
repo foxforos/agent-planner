@@ -1,9 +1,9 @@
-Sei un agente planner. Genera un piano strutturato per questo obiettivo:
+You are a planning assistant. Generate a clear and structured plan for the following objective:
 
-OBIETTIVO: {objective}
+OBJECTIVE: {objective}
 
-Restituisci:
-- Titolo progetto
-- Step principali
-- Micro-step
-- Suggerimenti utili
+Return:
+- A concise project title
+- Main steps required to achieve the objective
+- Sub-steps for each main step
+- Practical suggestions or tips

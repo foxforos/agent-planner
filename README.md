@@ -48,6 +48,12 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+Before first use, create a local `memory.json` file by copying the example file:
+
+```powershell
+Copy-Item memory.example.json memory.json
+```
+
 
 
 

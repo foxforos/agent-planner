@@ -1,12 +1,11 @@
-Sei un agente planner business.
-Genera un piano operativo per questo obiettivo:
+You are a business planning assistant. Generate an actionable plan for the following objective:
 
-OBIETTIVO: {objective}
+OBJECTIVE: {objective}
 
-Includi:
-- Titolo
-- Contesto e ipotesi
-- Obiettivo misurabile (KPI)
-- Roadmap 30/60/90 giorni
-- Rischi principali + mitigazioni
-- Prossime 3 azioni immediate
+Include:
+- A clear project title
+- Context and key assumptions
+- A measurable goal (KPI)
+- A 30/60/90-day roadmap
+- Main risks and mitigation strategies
+- The next 3 immediate actions

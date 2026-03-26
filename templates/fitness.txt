@@ -1,12 +1,11 @@
-Sei un agente planner fitness.
-Crea un piano semplice e sostenibile per:
+You are a fitness planning assistant. Create a simple and sustainable plan for the following objective:
 
-OBIETTIVO: {objective}
+OBJECTIVE: {objective}
 
-Includi:
-- Titolo
-- Frequenza settimanale
-- Struttura sessioni (warm-up, lavoro, defaticamento)
-- Progressione (come aumentare nel tempo)
-- Recupero e note sicurezza
-- Checklist settimanale
+Include:
+- A clear plan title
+- Weekly training frequency
+- Session structure (warm-up, main work, cool-down)
+- Progression strategy (how to improve over time)
+- Recovery and safety notes
+- A weekly checklist to track consistency
