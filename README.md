@@ -109,26 +109,25 @@ This will:
 
 ## Project Structure
 
+```text
 Agent_Planner_v1/
-│
 ├── agent.py
 ├── planner.py
 ├── config.py
 ├── models.py
 ├── doc_builder.py
 ├── logger_config.py
-│
 ├── memory.json
 ├── docs/
 │   └── _orphaned/
 ├── backups/
 ├── logs/
 ├── templates/
-│
 ├── tests/
 ├── Dockerfile
 ├── run.ps1
 └── README_DOCKER.md
+```
 
 
 
