@@ -19,34 +19,36 @@ def print_help():
     help_text = """
 Agent Planner CLI
 
-Sintassi:
+USAGE:
   agent-planner "comando"
 
-📦 Gestione progetti
+PROJECT MANAGEMENT
   "crea progetto: obiettivo"
+  "crea progetto: obiettivo --txt"   
+       note -> default: .md | optional: .txt via --txt
   "mostra progetti"
   "carica progetto: nome"
   "apri progetto: nome"
 
-🗑️ Modifiche
+PROJECT UPDATES
   "elimina progetto: nome"
   "elimina progetto: nome --dry-run"
   "modifica progetto: nome_attuale: nuovo_nome"
   "modifica progetto: nome_attuale: nuovo_nome --dry-run"
 
-🔎 Ricerca
+SEARCH
   "cerca: keyword"
 
-🏷️ Tag
+TAG MANAGEMENT
   "aggiungi tag: nome_progetto : tag1, tag2"
   "rimuovi tag: nome_progetto : tag1, tag2"
   "filtra tag: tag1, tag2"
 
-🛠️ Diagnostica
+DIAGNOSTICS
   "doctor"
   "doctor_fix"
 
-Esempi:
+EXAMPLES:
   agent-planner "crea progetto: app gestione spese"
   agent-planner "mostra progetti"
   agent-planner "elimina progetto: app gestione spese --dry-run"

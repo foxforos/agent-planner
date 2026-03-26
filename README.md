@@ -165,6 +165,9 @@ See: `README_DOCKER.md`
 
 - CLI commands with spaces must be wrapped in quotes
 - Interactive commands require a terminal (Docker uses `-it`)
+- CLI commands are currently written in Italian by design
+- Documentation and interface are in English for broader accessibility
+- Command localization may be expanded in future iterations
 
 
 
